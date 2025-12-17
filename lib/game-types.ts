@@ -18,6 +18,7 @@ export interface Ship {
 
 export interface Player {
   id: number
+  userId?: string
   name: string
   board: Map<string, Cell>
   ships: Ship[]

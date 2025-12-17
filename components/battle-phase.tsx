@@ -13,9 +13,10 @@ interface BattlePhaseProps {
   gameState: GameState
   onGameStateUpdate: (newState: GameState) => void
   isMyTurn?: boolean
+  viewerPlayerId?: number
 }
 
-export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true }: BattlePhaseProps) {
+export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true, viewerPlayerId }: BattlePhaseProps) {
   const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null)
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null)
   const [attackedThisTurn, setAttackedThisTurn] = useState<string[]>([])
@@ -23,6 +24,12 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true }: B
   const [pendingBonusShots, setPendingBonusShots] = useState(0)
 
   const currentPlayer = gameState.players[gameState.currentPlayerIndex]
+  const viewerPlayer = useMemo(() => {
+    if (viewerPlayerId !== undefined) {
+      return gameState.players.find((p) => p.id === viewerPlayerId) ?? currentPlayer
+    }
+    return currentPlayer
+  }, [currentPlayer, gameState.players, viewerPlayerId])
   const availableTargets = gameState.players.filter((p) => p.id !== currentPlayer.id && p.isAlive)
 
   const totalShots = Math.max(0, currentPlayer.availableShots + currentPlayer.bonusShots)
@@ -219,10 +226,10 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true }: B
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center gap-3">
-              <GameBoard board={currentPlayer.board} hideShips={false} isInteractive={false} />
+              <GameBoard board={viewerPlayer.board} hideShips={false} isInteractive={false} />
               <div className="flex gap-3 text-sm text-muted-foreground">
-                <span>ป้อมปืน: {currentPlayer.cannons.length}</span>
-                <span>เรือที่เหลือ: {currentPlayer.ships.filter((s) => !s.sunk).length}</span>
+                <span>ป้อมปืน: {viewerPlayer.cannons.length}</span>
+                <span>เรือที่เหลือ: {viewerPlayer.ships.filter((s) => !s.sunk).length}</span>
               </div>
             </div>
           </CardContent>
