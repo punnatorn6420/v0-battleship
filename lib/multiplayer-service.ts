@@ -181,12 +181,26 @@ function serializeGameState(gameState: GameState): any {
 }
 
 export function deserializeGameState(data: any): GameState {
+  const players = data.players.map((p: any) => ({
+    ...p,
+    board: new Map(p.board),
+  }))
+
+  const resolvedTurnUserId = data.currentTurnUserId ?? players?.[data.currentPlayerIndex]?.userId ?? null
+
+  let resolvedCurrentPlayerIndex = data.currentPlayerIndex ?? 0
+  if (resolvedTurnUserId) {
+    const turnIndex = players.findIndex((p: any) => p.userId === resolvedTurnUserId)
+    if (turnIndex >= 0) {
+      resolvedCurrentPlayerIndex = turnIndex
+    }
+  }
+
   return {
     ...data,
+    currentTurnUserId: resolvedTurnUserId,
+    currentPlayerIndex: resolvedCurrentPlayerIndex,
     attackHistory: data.attackHistory ?? [],
-    players: data.players.map((p: any) => ({
-      ...p,
-      board: new Map(p.board),
-    })),
+    players,
   }
 }

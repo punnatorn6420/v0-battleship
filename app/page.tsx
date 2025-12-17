@@ -83,6 +83,7 @@ export default function BattleshipGame() {
 
         return {
           id: idx + 1,
+          userId: p.id,
           name: p.name,
           board,
           ships: [],
@@ -94,6 +95,7 @@ export default function BattleshipGame() {
         }
       }),
       currentPlayerIndex: 0,
+      currentTurnUserId: room.players[0]?.id ?? null,
       phase: "setup",
       setupStep: "ships",
       winner: null,
@@ -109,7 +111,7 @@ export default function BattleshipGame() {
     console.log("[v0] Player setup complete:", player.name, "Ships:", player.ships.length)
 
     // Update the specific player in game state
-    const updatedPlayers = gameState.players.map((p) => (p.id === player.id ? player : p))
+    const updatedPlayers = gameState.players.map((p) => (p.id === player.id ? { ...player, userId: p.userId } : p))
 
     const newGameState: GameState = {
       ...gameState,
@@ -147,6 +149,7 @@ export default function BattleshipGame() {
         players: battleReadyPlayers,
         phase: "battle", // Explicitly set to battle phase
         currentPlayerIndex: 0, // Start with first player
+        currentTurnUserId: battleReadyPlayers[0]?.userId ?? null,
         winner: null, // No winner at start
       }
 

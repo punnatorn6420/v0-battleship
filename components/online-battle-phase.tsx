@@ -15,7 +15,10 @@ interface OnlineBattlePhaseProps {
 
 export function OnlineBattlePhase({ room, currentUserId, gameState: initialGameState }: OnlineBattlePhaseProps) {
   const [gameState, setGameState] = useState<GameState>(initialGameState)
+  const viewerPlayer = gameState.players.find((p) => p.userId === currentUserId)
   const playerIndex = room.players.findIndex((p) => p.id === currentUserId)
+  const fallbackViewer = playerIndex >= 0 ? gameState.players[playerIndex] : null
+  const viewerPlayerId = (viewerPlayer ?? fallbackViewer)?.id ?? null
 
   useEffect(() => {
     const unsubscribe = subscribeToRoom(room.id, (updatedRoom) => {
@@ -28,7 +31,9 @@ export function OnlineBattlePhase({ room, currentUserId, gameState: initialGameS
     return unsubscribe
   }, [room.id])
 
-  const isMyTurn = gameState.currentPlayerIndex === playerIndex
+  const isMyTurn =
+    gameState.currentTurnUserId === currentUserId ||
+    gameState.players[gameState.currentPlayerIndex]?.id === viewerPlayerId
 
   const handleGameStateUpdate = async (newState: GameState) => {
     await updateGameState(room.id, newState)
@@ -48,7 +53,12 @@ export function OnlineBattlePhase({ room, currentUserId, gameState: initialGameS
         </Card>
       )}
 
-      <BattlePhase gameState={gameState} onGameStateUpdate={handleGameStateUpdate} isMyTurn={isMyTurn} />
+      <BattlePhase
+        gameState={gameState}
+        onGameStateUpdate={handleGameStateUpdate}
+        isMyTurn={isMyTurn}
+        viewerPlayerId={viewerPlayerId ?? undefined}
+      />
     </div>
   )
 }
