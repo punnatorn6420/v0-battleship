@@ -1,21 +1,23 @@
 "use client"
 
-import { useState } from "react"
-import type { GameState } from "@/lib/game-types"
+import { useEffect, useMemo, useState } from "react"
+import type { Cell, GameState } from "@/lib/game-types"
 import { GameBoard } from "./game-board"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
 import { Badge } from "./ui/badge"
 import { processAttack } from "@/lib/game-utils"
-import { Crosshair, Flame, Target } from "lucide-react"
+import { Crosshair, Flame, History, Target } from "lucide-react"
 
 interface BattlePhaseProps {
   gameState: GameState
   onGameStateUpdate: (newState: GameState) => void
+  isMyTurn?: boolean
 }
 
-export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) {
-  const [selectedTarget, setSelectedTarget] = useState<{ playerId: number; position: string } | null>(null)
+export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true }: BattlePhaseProps) {
+  const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null)
+  const [selectedPosition, setSelectedPosition] = useState<string | null>(null)
   const [attackedThisTurn, setAttackedThisTurn] = useState<string[]>([])
   const [turnResults, setTurnResults] = useState<Array<{ target: string; result: string; type: string }>>([])
   const [pendingBonusShots, setPendingBonusShots] = useState(0)
@@ -23,26 +25,70 @@ export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) 
   const currentPlayer = gameState.players[gameState.currentPlayerIndex]
   const availableTargets = gameState.players.filter((p) => p.id !== currentPlayer.id && p.isAlive)
 
-  const totalShots = currentPlayer.availableShots + currentPlayer.bonusShots
-  const remainingShots = totalShots - attackedThisTurn.length
+  const totalShots = Math.max(0, currentPlayer.availableShots + currentPlayer.bonusShots)
+  const remainingShots = Math.max(0, totalShots - attackedThisTurn.length)
 
-  const handleTargetSelection = (playerId: number, position: string) => {
-    setSelectedTarget({ playerId, position })
+  useEffect(() => {
+    if (availableTargets.length === 0) {
+      setSelectedTargetId(null)
+      return
+    }
+
+    if (!selectedTargetId || !availableTargets.some((t) => t.id === selectedTargetId)) {
+      setSelectedTargetId(availableTargets[0].id)
+    }
+  }, [availableTargets, selectedTargetId])
+
+  useEffect(() => {
+    setAttackedThisTurn([])
+    setTurnResults([])
+    setSelectedPosition(null)
+    setPendingBonusShots(0)
+  }, [gameState.currentPlayerIndex])
+
+  const targetingBoard = useMemo(() => {
+    const board = new Map<string, Cell>()
+
+    for (const row of ["A", "B", "C", "D", "E", "F", "G", "H"]) {
+      for (const col of [1, 2, 3, 4, 5, 6, 7, 8]) {
+        board.set(`${row}${col}`, { type: "water", hit: "none" })
+      }
+    }
+
+    const myShots = (gameState.attackHistory ?? []).filter((entry) => entry.attackerId === currentPlayer.id)
+    for (const shot of myShots) {
+      const cell = board.get(shot.position)
+      if (!cell) continue
+
+      cell.hit = "hit"
+      if (shot.type === "โดน" || shot.type === "ล่ม") {
+        cell.type = "ship"
+      } else if (shot.type === "ลงดิน") {
+        cell.type = "land"
+      }
+    }
+
+    return board
+  }, [currentPlayer.id, gameState.attackHistory])
+
+  const handlePositionSelect = (position: string) => {
+    if (!isMyTurn || remainingShots <= 0) return
+    setSelectedPosition(position)
   }
 
   const handleAttack = () => {
-    if (!selectedTarget || remainingShots <= 0) return
+    if (!isMyTurn || !selectedPosition || selectedTargetId === null || remainingShots <= 0) return
 
-    const targetPlayer = gameState.players.find((p) => p.id === selectedTarget.playerId)
+    const targetPlayer = gameState.players.find((p) => p.id === selectedTargetId)
     if (!targetPlayer) return
 
-    const attackKey = `${selectedTarget.playerId}-${selectedTarget.position}`
+    const attackKey = `${selectedTargetId}-${selectedPosition}`
     if (attackedThisTurn.includes(attackKey)) {
       alert("คุณยิงตำแหน่งนี้ในตานี้แล้ว")
       return
     }
 
-    const result = processAttack(targetPlayer, selectedTarget.position)
+    const result = processAttack(targetPlayer, selectedPosition)
 
     const newAttacked = [...attackedThisTurn, attackKey]
     setAttackedThisTurn(newAttacked)
@@ -50,7 +96,7 @@ export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) 
     setTurnResults([
       ...turnResults,
       {
-        target: `${targetPlayer.name} ${selectedTarget.position}`,
+        target: `${targetPlayer.name} ${selectedPosition}`,
         result: result.message,
         type: result.type,
       },
@@ -59,6 +105,19 @@ export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) 
     if (result.type === "ลงดิน" && result.bonusShots > 0) {
       setPendingBonusShots(pendingBonusShots + result.bonusShots)
     }
+
+    const updatedHistory = [
+      ...(gameState.attackHistory ?? []),
+      {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        attackerId: currentPlayer.id,
+        targetId: targetPlayer.id,
+        position: selectedPosition,
+        result: result.message,
+        type: result.type,
+      },
+    ]
+    gameState.attackHistory = updatedHistory
 
     if (targetPlayer.ships.length > 0) {
       const allShipsSunk = targetPlayer.ships.every((s) => s.sunk)
@@ -72,11 +131,13 @@ export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) 
       gameState.winner = alivePlayers[0].id
     }
 
-    setSelectedTarget(null)
+    setSelectedPosition(null)
     onGameStateUpdate({ ...gameState })
   }
 
   const handleEndTurn = () => {
+    if (!isMyTurn) return
+
     currentPlayer.bonusShots = pendingBonusShots
 
     currentPlayer.availableShots = currentPlayer.cannons.length
@@ -90,7 +151,7 @@ export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) 
     gameState.currentPlayerIndex = nextIndex
     setAttackedThisTurn([])
     setTurnResults([])
-    setSelectedTarget(null)
+    setSelectedPosition(null)
     setPendingBonusShots(0)
     onGameStateUpdate({ ...gameState })
   }
@@ -115,9 +176,10 @@ export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) 
     )
   }
 
+  const historyEntries = (gameState.attackHistory ?? []).slice(-12).reverse()
+
   return (
     <div className="space-y-6">
-      {/* Current player info */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -128,109 +190,185 @@ export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) 
             </Badge>
           </CardTitle>
           <CardDescription>
-            <div className="flex items-center gap-4 mt-2">
+            <div className="flex flex-wrap items-center gap-4 mt-2 text-sm">
               <div className="flex items-center gap-2">
                 <Flame className="w-4 h-4" />
-                <span className="text-sm">
-                  ป้อมปืน: {currentPlayer.cannons.length} ({currentPlayer.availableShots} นัด)
+                <span>
+                  กระสุนจากป้อม: {currentPlayer.cannons.length} | รอบนี้: {currentPlayer.availableShots}
                 </span>
               </div>
-              {currentPlayer.bonusShots > 0 && (
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-accent" />
-                  <span className="text-sm text-accent">โบนัสจากตาที่แล้ว: {currentPlayer.bonusShots} นัด</span>
-                </div>
-              )}
-              {pendingBonusShots > 0 && (
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-green-500">โบนัสตาหน้า: +{pendingBonusShots} นัด</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-accent" />
+                <span className="text-accent">โบนัสพกมา: {currentPlayer.bonusShots}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-green-500" />
+                <span className="text-green-500">โบนัสรอบหน้า: +{pendingBonusShots}</span>
+              </div>
+              {!isMyTurn && <span className="text-muted-foreground">รอตัวเองก่อนถึงจะยิงได้</span>}
             </div>
           </CardDescription>
         </CardHeader>
       </Card>
 
-      {/* Turn results */}
-      {turnResults.length > 0 && (
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">ผลการโจมตีในตานี้</CardTitle>
+            <CardTitle>กระดานของคุณ</CardTitle>
+            <CardDescription>ตรวจสอบความเสียหายและจำนวนป้อมที่ยังเหลือ</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {turnResults.map((result, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm">
-                  <span>{result.target}</span>
-                  <Badge
-                    variant={
-                      result.type === "ล่ม"
-                        ? "destructive"
-                        : result.type === "โดน"
-                          ? "default"
-                          : result.type === "ลงดิน"
-                            ? "secondary"
-                            : "outline"
-                    }
-                  >
-                    {result.result}
-                  </Badge>
+            <div className="flex flex-col items-center gap-3">
+              <GameBoard board={currentPlayer.board} hideShips={false} isInteractive={false} />
+              <div className="flex gap-3 text-sm text-muted-foreground">
+                <span>ป้อมปืน: {currentPlayer.cannons.length}</span>
+                <span>เรือที่เหลือ: {currentPlayer.ships.filter((s) => !s.sunk).length}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>เลือกจุดยิง</CardTitle>
+            <CardDescription>คลิกกระดานโล่งเพื่อกำหนดพิกัด แล้วเลือกผู้เล่นที่จะโจมตี</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative flex justify-center">
+              {!isMyTurn && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-sm">
+                  <span className="text-sm text-muted-foreground">ยังไม่ใช่ตาของคุณ</span>
                 </div>
-              ))}
+              )}
+              <GameBoard
+                board={targetingBoard}
+                onCellClick={handlePositionSelect}
+                selectedCells={selectedPosition ? [selectedPosition] : []}
+                isInteractive={isMyTurn && remainingShots > 0}
+                hideShips={true}
+              />
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">ผู้เล่นที่จะยิง</div>
+                <select
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedTargetId ?? ""}
+                  onChange={(e) => setSelectedTargetId(Number(e.target.value))}
+                  disabled={!isMyTurn || remainingShots === 0 || availableTargets.length === 0}
+                >
+                  {availableTargets.map((target) => (
+                    <option key={target.id} value={target.id}>
+                      {target.name} (เรือ {target.ships.filter((s) => !s.sunk).length}/{target.ships.length})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">ตำแหน่งที่จะยิง</div>
+                <div className="rounded-md border border-dashed px-3 py-2 text-sm">
+                  {selectedPosition ?? "ยังไม่ได้เลือก"}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Button
+                onClick={handleAttack}
+                size="lg"
+                disabled={
+                  !isMyTurn ||
+                  remainingShots <= 0 ||
+                  !selectedPosition ||
+                  selectedTargetId === null ||
+                  availableTargets.length === 0
+                }
+              >
+                ยิง
+              </Button>
+              <Button
+                onClick={handleEndTurn}
+                size="lg"
+                variant="secondary"
+                disabled={!isMyTurn || (attackedThisTurn.length === 0 && remainingShots === totalShots)}
+              >
+                จบตา
+              </Button>
+            </div>
+
+            {turnResults.length > 0 && (
+              <div className="mt-6 space-y-2">
+                <div className="text-sm font-semibold">ผลการยิงในตานี้</div>
+                {turnResults.map((result, idx) => (
+                  <div key={idx} className="flex items-center justify-between rounded-md bg-muted/50 p-2 text-sm">
+                    <span>{result.target}</span>
+                    <Badge
+                      variant={
+                        result.type === "ล่ม"
+                          ? "destructive"
+                          : result.type === "โดน"
+                            ? "default"
+                            : result.type === "ลงดิน"
+                              ? "secondary"
+                              : "outline"
+                      }
+                    >
+                      {result.result}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {historyEntries.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="w-4 h-4" />
+              ประวัติการยิงล่าสุด
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-sm">
+              {historyEntries.map((entry) => {
+                const attacker = gameState.players.find((p) => p.id === entry.attackerId)
+                const target = gameState.players.find((p) => p.id === entry.targetId)
+
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between rounded-md border px-3 py-2"
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {attacker?.name ?? "ไม่ทราบ"} → {target?.name ?? "ไม่ทราบ"}
+                      </span>
+                      <span className="text-muted-foreground">ตำแหน่ง: {entry.position}</span>
+                    </div>
+                    <Badge
+                      variant={
+                        entry.type === "ล่ม"
+                          ? "destructive"
+                          : entry.type === "โดน"
+                            ? "default"
+                            : entry.type === "ลงดิน"
+                              ? "secondary"
+                              : "outline"
+                      }
+                    >
+                      {entry.result}
+                    </Badge>
+                  </div>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Target selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {availableTargets.map((target) => (
-          <Card key={target.id} className={selectedTarget?.playerId === target.id ? "ring-2 ring-primary" : ""}>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                <span>{target.name}</span>
-                <div className="flex gap-1">
-                  {target.ships.map((ship) => (
-                    <div
-                      key={ship.id}
-                      className={`w-2 h-2 rounded-full ${ship.sunk ? "bg-destructive" : "bg-secondary"}`}
-                    />
-                  ))}
-                </div>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                เรือที่เหลือ: {target.ships.filter((s) => !s.sunk).length}/{target.ships.length}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-center">
-                <GameBoard
-                  board={target.board}
-                  onCellClick={(pos) => handleTargetSelection(target.id, pos)}
-                  selectedCells={selectedTarget?.playerId === target.id ? [selectedTarget.position] : []}
-                  isInteractive={remainingShots > 0}
-                  hideShips={true}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex justify-center gap-4">
-        {selectedTarget && remainingShots > 0 && (
-          <Button onClick={handleAttack} size="lg" className="min-w-32">
-            ยิง
-          </Button>
-        )}
-        {(remainingShots === 0 || attackedThisTurn.length > 0) && (
-          <Button onClick={handleEndTurn} size="lg" variant="secondary" className="min-w-32">
-            จบตา
-          </Button>
-        )}
-      </div>
     </div>
   )
 }

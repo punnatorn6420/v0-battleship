@@ -38,6 +38,16 @@ export interface GameState {
     message: string
     type: "โดน" | "ล่ม" | "ลงดิน" | "ลงน้ำ"
   }
+  attackHistory: AttackLogEntry[]
+}
+
+export interface AttackLogEntry {
+  id: string
+  attackerId: number
+  targetId: number
+  position: string
+  result: string
+  type: "โดน" | "ล่ม" | "ลงดิน" | "ลงน้ำ"
 }
 
 export const BOARD_SIZE = 8
