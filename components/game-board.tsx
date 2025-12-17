@@ -24,20 +24,18 @@ export function GameBoard({
 
     // Show hit status if cell has been attacked
     if (cell.hit === "hit") {
-      if (cell.type === "water") {
-        return (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-2 h-2 rounded-full bg-muted" />
-          </div>
-        )
-      }
       return (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="w-3 h-3">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-destructive">
-              <path d="M18 6L6 18M6 6l12 12" strokeWidth="3" strokeLinecap="round" />
-            </svg>
-          </div>
+        <div
+          className={cn(
+            "w-full h-full flex items-center justify-center",
+            cell.type !== "water" ? "bg-destructive/15" : undefined,
+          )}
+        >
+          {cell.type === "water" ? (
+            <div className="w-2 h-2 rounded-full bg-muted" />
+          ) : (
+            <Flame className="w-5 h-5 text-destructive drop-shadow" />
+          )}
         </div>
       )
     }
