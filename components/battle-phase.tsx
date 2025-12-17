@@ -95,7 +95,7 @@ export function BattlePhase({ gameState, onGameStateUpdate }: BattlePhaseProps) 
     onGameStateUpdate({ ...gameState })
   }
 
-  if (gameState.winner !== null) {
+  if (typeof gameState.winner === "number") {
     const winner = gameState.players.find((p) => p.id === gameState.winner)
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
