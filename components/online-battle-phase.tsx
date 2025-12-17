@@ -27,6 +27,15 @@ export function OnlineBattlePhase({ room, currentUserId, gameState: initialGameS
     null
 
   useEffect(() => {
+    const normalizedState = {
+      ...initialGameState,
+      currentTurnUserId: deriveTurnUserId(initialGameState),
+    }
+
+    setGameState(normalizedState)
+  }, [initialGameState])
+
+  useEffect(() => {
     const unsubscribe = subscribeToRoom(room.id, (updatedRoom) => {
       if (updatedRoom?.gameState) {
         const deserializedState = deserializeGameState(updatedRoom.gameState)
