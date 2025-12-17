@@ -20,24 +20,37 @@ export function OnlineBattlePhase({ room, currentUserId, gameState: initialGameS
   const fallbackViewer = playerIndex >= 0 ? gameState.players[playerIndex] : null
   const viewerPlayerId = (viewerPlayer ?? fallbackViewer)?.id ?? null
 
+  const deriveTurnUserId = (state: GameState) =>
+    state.currentTurnUserId ??
+    state.players[state.currentPlayerIndex]?.userId ??
+    room.players[state.currentPlayerIndex]?.id ??
+    null
+
   useEffect(() => {
     const unsubscribe = subscribeToRoom(room.id, (updatedRoom) => {
       if (updatedRoom?.gameState) {
         const deserializedState = deserializeGameState(updatedRoom.gameState)
-        setGameState(deserializedState)
+        const normalizedState = {
+          ...deserializedState,
+          currentTurnUserId: deriveTurnUserId(deserializedState),
+        }
+        setGameState(normalizedState)
       }
     })
 
     return unsubscribe
   }, [room.id])
 
-  const isMyTurn =
-    gameState.currentTurnUserId === currentUserId ||
-    gameState.players[gameState.currentPlayerIndex]?.id === viewerPlayerId
+  const currentTurnUserId = deriveTurnUserId(gameState)
+  const isMyTurn = currentTurnUserId === currentUserId
 
   const handleGameStateUpdate = async (newState: GameState) => {
-    await updateGameState(room.id, newState)
-    setGameState(newState)
+    const normalizedState = {
+      ...newState,
+      currentTurnUserId: deriveTurnUserId(newState),
+    }
+    await updateGameState(room.id, normalizedState)
+    setGameState(normalizedState)
   }
 
   return (
