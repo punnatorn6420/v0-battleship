@@ -32,7 +32,7 @@ export function OnlineBattlePhase({ room, currentUserId, gameState: initialGameS
   }, [room.id])
 
   const isMyTurn =
-    gameState.players[gameState.currentPlayerIndex]?.userId === currentUserId ||
+    gameState.currentTurnUserId === currentUserId ||
     gameState.players[gameState.currentPlayerIndex]?.id === viewerPlayerId
 
   const handleGameStateUpdate = async (newState: GameState) => {

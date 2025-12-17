@@ -32,6 +32,7 @@ export function createInitialGameState(): GameState {
   return {
     players: [createPlayer(1), createPlayer(2), createPlayer(3), createPlayer(4)],
     currentPlayerIndex: 0,
+    currentTurnUserId: null,
     phase: "setup",
     setupStep: "ships",
     winner: null,

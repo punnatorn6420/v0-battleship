@@ -156,6 +156,7 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true, vie
     }
 
     gameState.currentPlayerIndex = nextIndex
+    gameState.currentTurnUserId = gameState.players[nextIndex]?.userId ?? null
     setAttackedThisTurn([])
     setTurnResults([])
     setSelectedPosition(null)

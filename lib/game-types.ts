@@ -32,6 +32,7 @@ export interface Player {
 export interface GameState {
   players: Player[]
   currentPlayerIndex: number
+  currentTurnUserId: string | null
   phase: "setup" | "battle"
   setupStep: "ships" | "land" | "cannons" | "complete"
   winner: number | null

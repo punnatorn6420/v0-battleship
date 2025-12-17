@@ -95,6 +95,7 @@ export default function BattleshipGame() {
         }
       }),
       currentPlayerIndex: 0,
+      currentTurnUserId: room.players[0]?.id ?? null,
       phase: "setup",
       setupStep: "ships",
       winner: null,
@@ -148,6 +149,7 @@ export default function BattleshipGame() {
         players: battleReadyPlayers,
         phase: "battle", // Explicitly set to battle phase
         currentPlayerIndex: 0, // Start with first player
+        currentTurnUserId: battleReadyPlayers[0]?.userId ?? null,
         winner: null, // No winner at start
       }
 
