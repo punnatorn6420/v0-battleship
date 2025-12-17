@@ -24,6 +24,7 @@ export function OnlineSetupPhase({ room, currentUserId, onPlayerSetupComplete, p
     if (playerIndex !== -1 && !localPlayer) {
       const player: Player = {
         id: playerIndex + 1,
+        userId: currentUserId,
         name: room.players[playerIndex].name,
         board: new Map(),
         ships: [],
@@ -51,7 +52,7 @@ export function OnlineSetupPhase({ room, currentUserId, onPlayerSetupComplete, p
 
   const handleSetupComplete = (player: Player) => {
     player.availableShots = player.cannons.length
-    onPlayerSetupComplete(player)
+    onPlayerSetupComplete({ ...player, userId: currentUserId })
   }
 
   if (!localPlayer) {
