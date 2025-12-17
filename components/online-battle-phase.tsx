@@ -48,7 +48,7 @@ export function OnlineBattlePhase({ room, currentUserId, gameState: initialGameS
         </Card>
       )}
 
-      <BattlePhase gameState={gameState} onGameStateUpdate={handleGameStateUpdate} />
+      <BattlePhase gameState={gameState} onGameStateUpdate={handleGameStateUpdate} isMyTurn={isMyTurn} />
     </div>
   )
 }

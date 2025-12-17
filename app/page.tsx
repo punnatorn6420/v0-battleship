@@ -97,6 +97,7 @@ export default function BattleshipGame() {
       phase: "setup",
       setupStep: "ships",
       winner: null,
+      attackHistory: [],
     }
 
     setGameState(initialState)

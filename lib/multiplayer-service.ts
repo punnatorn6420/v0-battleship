@@ -183,6 +183,7 @@ function serializeGameState(gameState: GameState): any {
 export function deserializeGameState(data: any): GameState {
   return {
     ...data,
+    attackHistory: data.attackHistory ?? [],
     players: data.players.map((p: any) => ({
       ...p,
       board: new Map(p.board),
