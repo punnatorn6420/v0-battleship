@@ -110,6 +110,7 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true, vie
     ])
 
     if (result.type === "ลงดิน" && result.bonusShots > 0) {
+      targetPlayer.bonusShots = (targetPlayer.bonusShots ?? 0) + result.bonusShots
       setPendingBonusShots(pendingBonusShots + result.bonusShots)
     }
 
@@ -145,9 +146,10 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true, vie
   const handleEndTurn = () => {
     if (!isMyTurn) return
 
-    currentPlayer.bonusShots = pendingBonusShots
-
     currentPlayer.availableShots = currentPlayer.cannons.length
+
+    // Clear spent bonuses. New incoming bonuses will be added immediately when opponents miss onto your land.
+    currentPlayer.bonusShots = 0
 
     // Move to next alive player
     let nextIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length
@@ -211,7 +213,7 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true, vie
               </div>
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-green-500" />
-                <span className="text-green-500">โบนัสรอบหน้า: +{pendingBonusShots}</span>
+                <span className="text-green-500">โบนัสที่ผู้เล่นเป้าหมายจะได้รับ: +{pendingBonusShots}</span>
               </div>
               {!isMyTurn && <span className="text-muted-foreground">รอตัวเองก่อนถึงจะยิงได้</span>}
             </div>
