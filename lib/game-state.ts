@@ -24,6 +24,7 @@ export function createPlayer(id: number): Player {
     landCells: [],
     availableShots: 3,
     bonusShots: 0,
+    pendingBonusShots: 0,
     isAlive: true,
   }
 }
@@ -36,5 +37,7 @@ export function createInitialGameState(): GameState {
     phase: "setup",
     setupStep: "ships",
     winner: null,
+    round: 1,
+    attackHistory: [],
   }
 }

@@ -26,6 +26,7 @@ export interface Player {
   landCells: string[] // positions of land
   availableShots: number
   bonusShots: number
+  pendingBonusShots: number
   isAlive: boolean
 }
 
@@ -36,6 +37,7 @@ export interface GameState {
   phase: "setup" | "battle"
   setupStep: "ships" | "land" | "cannons" | "complete"
   winner: number | null
+  round: number
   lastAttackResult?: {
     message: string
     type: "โดน" | "ล่ม" | "ลงดิน" | "ลงน้ำ"

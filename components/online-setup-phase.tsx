@@ -32,6 +32,7 @@ export function OnlineSetupPhase({ room, currentUserId, onPlayerSetupComplete, p
         landCells: [],
         availableShots: 0,
         bonusShots: 0,
+        pendingBonusShots: 0,
         isAlive: true,
       }
 
