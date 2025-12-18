@@ -110,7 +110,7 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true, vie
     ])
 
     if (result.type === "ลงดิน" && result.bonusShots > 0) {
-      targetPlayer.bonusShots = (targetPlayer.bonusShots ?? 0) + result.bonusShots
+      targetPlayer.pendingBonusShots = (targetPlayer.pendingBonusShots ?? 0) + result.bonusShots
       setPendingBonusShots(pendingBonusShots + result.bonusShots)
     }
 
@@ -146,15 +146,34 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true, vie
   const handleEndTurn = () => {
     if (!isMyTurn) return
 
-    currentPlayer.availableShots = currentPlayer.cannons.length
+    const previousPlayerIndex = gameState.currentPlayerIndex
+    const previousPlayer = gameState.players[previousPlayerIndex]
 
-    // Clear spent bonuses. New incoming bonuses will be added immediately when opponents miss onto your land.
-    currentPlayer.bonusShots = 0
+    previousPlayer.availableShots = previousPlayer.cannons.length
+
+    // Clear spent bonuses at the end of the player's turn
+    previousPlayer.bonusShots = 0
 
     // Move to next alive player
-    let nextIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length
-    while (!gameState.players[nextIndex].isAlive && gameState.winner === null) {
+    let nextIndex = (previousPlayerIndex + 1) % gameState.players.length
+    while (!gameState.players[nextIndex].isAlive && gameState.winner === null && nextIndex !== previousPlayerIndex) {
       nextIndex = (nextIndex + 1) % gameState.players.length
+    }
+
+    const wrappedToStart = nextIndex <= previousPlayerIndex
+
+    if (wrappedToStart) {
+      gameState.round = (gameState.round ?? 1) + 1
+
+      // New round: promote queued bonuses and refresh shots from remaining cannons
+      gameState.players.forEach((player) => {
+        player.bonusShots = player.pendingBonusShots ?? 0
+        player.pendingBonusShots = 0
+        player.availableShots = player.cannons.length
+      })
+    } else {
+      const nextPlayer = gameState.players[nextIndex]
+      nextPlayer.availableShots = nextPlayer.cannons.length
     }
 
     gameState.currentPlayerIndex = nextIndex
@@ -213,7 +232,7 @@ export function BattlePhase({ gameState, onGameStateUpdate, isMyTurn = true, vie
               </div>
               <div className="flex items-center gap-2">
                 <Target className="w-4 h-4 text-green-500" />
-                <span className="text-green-500">โบนัสที่ผู้เล่นเป้าหมายจะได้รับ: +{pendingBonusShots}</span>
+                <span className="text-green-500">โบนัสที่ผู้เล่นเป้าหมายจะได้รับในรอบถัดไป: +{pendingBonusShots}</span>
               </div>
               {!isMyTurn && <span className="text-muted-foreground">รอตัวเองก่อนถึงจะยิงได้</span>}
             </div>

@@ -183,10 +183,13 @@ function serializeGameState(gameState: GameState): any {
 export function deserializeGameState(data: any): GameState {
   return {
     ...data,
+    round: data.round ?? 1,
     currentTurnUserId: data.currentTurnUserId ?? data.players?.[data.currentPlayerIndex]?.userId ?? null,
     attackHistory: data.attackHistory ?? [],
     players: data.players.map((p: any) => ({
       ...p,
+      bonusShots: p.bonusShots ?? 0,
+      pendingBonusShots: p.pendingBonusShots ?? 0,
       board: new Map(p.board),
     })),
   }

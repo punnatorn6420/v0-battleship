@@ -91,6 +91,7 @@ export default function BattleshipGame() {
           landCells: [],
           availableShots: 0, // Will be set after setup
           bonusShots: 0,
+          pendingBonusShots: 0,
           isAlive: true,
         }
       }),
@@ -99,6 +100,7 @@ export default function BattleshipGame() {
       phase: "setup",
       setupStep: "ships",
       winner: null,
+      round: 1,
       attackHistory: [],
     }
 
@@ -141,6 +143,7 @@ export default function BattleshipGame() {
         ...p,
         availableShots: p.cannons.length, // Set to cannon count
         bonusShots: 0, // Start with no bonus
+        pendingBonusShots: 0,
         isAlive: true, // All players start alive
       }))
 
@@ -151,6 +154,7 @@ export default function BattleshipGame() {
         currentPlayerIndex: 0, // Start with first player
         currentTurnUserId: battleReadyPlayers[0]?.userId ?? null,
         winner: null, // No winner at start
+        round: 1,
       }
 
       await updateGameState(currentRoom.id, battleState)
